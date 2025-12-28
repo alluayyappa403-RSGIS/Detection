@@ -4,10 +4,21 @@ from skimage.feature import blob_log
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
+from skimage.measure import shannon_entropy
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+def evaluate_image_quality(img):
+    # Estimate background using dark pixels
+    background_pixels = img[img < 30]
+    noise_std = np.std(background_pixels) if len(background_pixels) > 0 else np.std(img)
+    # Global entropy
+    entropy = shannon_entropy(img)
+    # Histogram variance (contrast)
+    contrast_var = np.var(img)
+    return noise_std, entropy, contrast_var
 
 def preprocess_image(img_path):
     img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
@@ -129,6 +140,8 @@ def process_datasets(dataset_folder="Datasets_Assessment"):
         print(f"\nProcessing: {file}")
         try:
             img, denoised, enhanced, thresh = preprocess_image(img_path)
+            noise_std, entropy, contrast = evaluate_image_quality(img)
+            print(f"Noise STD: {noise_std:.2f}, Entropy: {entropy:.2f}, Variance: {contrast:.2f}")
             stars, star_count = detect_stars(enhanced)
             streaks, streak_count = detect_streaks(thresh)
             visualize_results(img, denoised, enhanced, thresh, stars, streaks, file, OUTPUT_DIR)
